@@ -25,7 +25,7 @@ function createCopy () {
 	todayIs=$(date +"%Y-%m-%d")
 
 	# create directory for today's backups 
-	mkdir /storage/backupy/kopieplikow-"$todayIs"
+	mkdir /storage/backupy/fileBackups-"$todayIs"
 
 	# nowIs = now, like date+hh+mm+ss
 	nowIs=$(date +"%Y-%m-%d-%R:%S")
@@ -34,7 +34,7 @@ function createCopy () {
 	echo "$nowIs zaczalem $2" >> /home/root/scripts/backupLog
 
 
-	ssh -i ~/.ssh/yourRSApaswordlesskey -p $portssh $serwer "tar -czf - $1" > /storage/backupy/kopieplikow-"$todayIs"/"$todayIs"-"$2".tar.gz
+	ssh -i ~/.ssh/yourRSApaswordlesskey -p $portssh $serwer "tar -czf - $1" > /storage/backupy/fileBackups-"$todayIs"/"$todayIs"-"$2".tar.gz
 
 	nowIs=$(date +"%Y-%m-%d-%R:%S")
 	echo "$nowIs skonczylem $2" >> /home/root/scripts/backupLog
@@ -68,11 +68,11 @@ createCopy "/home/login/ftp/6thPageName" "6thPageName"
 
 # phase 2 - pulling Mysql Dumps from remote servers 
 
-mkdir /storage/backupy/bazysql-firstServer-"$todayIs"
-scp -i ~/.ssh/yourRSApaswordlesskey -r yourLogin@firstServer.hostname.pl:dbcopies /storage/backupy/bazysql-firstServer-"$todayIs"/
+mkdir /storage/backupy/sqlDumps-firstServer-"$todayIs"
+scp -i ~/.ssh/yourRSApaswordlesskey -r yourLogin@firstServer.hostname.pl:sqlDumps /storage/backupy/sqlDumps-firstServer-"$todayIs"/
 
-mkdir /storage/backupy/bazysql-secondServer-"$todayIs"
-scp -i ~/.ssh/yourRSApaswordlesskey -P 59184 -r propablyYourLogin@secondServer.hostname.pl:dbcopies /storage/backupy/bazysql-secondServer-"$todayIs"/
+mkdir /storage/backupy/sqlDumps-secondServer-"$todayIs"
+scp -i ~/.ssh/yourRSApaswordlesskey -P 59184 -r propablyYourLogin@secondServer.hostname.pl:sqlDumps /storage/backupy/sqlDumps-secondServer-"$todayIs"/
 
 # and so on...
 
@@ -85,13 +85,13 @@ nowIs=$(date +"%Y-%m-%d-%R:%S")
 echo "$nowIs pushing files to Amazon S3" >> /home/root/scripts/backupLog
 
 # rclone settings for very cheap VPS with 768MB RAM so you need to tweak those
-rclone copy /storage/backupy/kopieplikow-"$todayIs" s3:yourS3BucketName/cron/"$todayIs"/  --checkers 1 --transfers 1 --use-mmap --buffer-size=64M --tpslimit 3 --s3-chunk-size=64M -q
+rclone copy /storage/backupy/fileBackups-"$todayIs" s3:yourS3BucketName/cron/"$todayIs"/  --checkers 1 --transfers 1 --use-mmap --buffer-size=64M --tpslimit 3 --s3-chunk-size=64M -q
 
 nowIs=$(date +"%Y-%m-%d-%R:%S")
 echo "$nowIs pushing SQL databases to Amazon S3" >> /home/root/scripts/backupLog
 
-rclone copy /storage/backupy/bazysql-firstServer-"$todayIs"/kopiebaz                s3:yourS3BucketName/cron/"$todayIs"/firstServer  --checkers 1 --transfers 1 --use-mmap --buffer-size=64M --tpslimit 3 --s3-chunk-size=64M -q
-rclone copy /storage/backupy/bazysql-secondServer-"$todayIs"/kopiebaz         s3:yourS3BucketName/cron/"$todayIs"/secondServer  --checkers 1 --transfers 1 --use-mmap --buffer-size=64M --tpslimit 3  --s3-chunk-size=64M -q
+rclone copy /storage/backupy/sqlDumps-firstServer-"$todayIs"/kopiebaz                s3:yourS3BucketName/cron/"$todayIs"/firstServer  --checkers 1 --transfers 1 --use-mmap --buffer-size=64M --tpslimit 3 --s3-chunk-size=64M -q
+rclone copy /storage/backupy/sqlDumps-secondServer-"$todayIs"/kopiebaz         s3:yourS3BucketName/cron/"$todayIs"/secondServer  --checkers 1 --transfers 1 --use-mmap --buffer-size=64M --tpslimit 3  --s3-chunk-size=64M -q
 
 
 # send mail with backupLog
