@@ -1,0 +1,103 @@
+	#!/bin/bash
+	# author: Krzysztof Palikowski, https://palikowski.net
+	# this script was created because wordpress backup plugins are cancer :) 
+	# you need to change user and paths to your enviroment obviously
+	# this is work in progress - i am learning bash :) 
+	# script works in 3 steps:
+	# 1) connect to several remote servers and pull wordpress files (but tar.gz first on remote machine) 
+	# 2) connect to several remote servers and pull sql dumps files (but those dumps must be prepared on those remote machines first)
+	# 3) push all to Amazon S3 using rclone (but this can be any cloud storage rclone can connect to) 
+	# i will change all paths and variables to EN lang later :) 
+	# this script runs every 2 days on my cheap VPS from (afiiliate link) https://mikr.us/?r=e6a6d054
+  # you need to create paswordless RSA key and distribute it to each server you connect to in order to use this script in cron
+  # i will create a tutorial about this and put a link to it here soon
+  # please comment or makepull req if you see a better way to do anything, i am not an expert in bash/linux etc. 
+
+
+	# remove old log 
+	rm  /home/root/scripts/backupLog
+
+	# function that gets 2 parameters and then pulls whole directories from remote servers   
+	function createCopy () {
+
+	# dzis = today date in 2021-05-24 format
+	dzis=$(date +"%Y-%m-%d")
+
+	# create directory for today's backups 
+	mkdir /storage/backupy/kopieplikow-"$dzis"
+
+	# teraz = now, like date+hh+mm+ss
+	teraz=$(date +"%Y-%m-%d-%R:%S")
+
+	# add timestamp to log
+	echo "$teraz zaczalem $2" >> /home/root/scripts/backupLog
+
+
+	ssh -i ~/.ssh/yourRSApaswordlesskey -p $portssh $serwer "tar -czf - $1" > /storage/backupy/kopieplikow-"$dzis"/"$dzis"-"$2".tar.gz
+
+	teraz=$(date +"%Y-%m-%d-%R:%S")
+	echo "$teraz skonczylem $2" >> /home/root/scripts/backupLog
+
+	}
+
+
+	# phase 1 - pulling tar.gz directories from remote servers 
+	# firstServer
+
+	serwer=login@firstServer.hostname.pl
+	portssh=22
+
+	createCopy "/home/login/domains/1stWordpressDirectoryName/public_html/" "1stPageName"
+	createCopy "/home/login/domains/2ndWordpressDirectoryName/public_html/" "2ndPageName"
+	createCopy "/home/login/domains/3rdWordpressDirectoryName/public_html/" "3rdpageName"
+
+
+	# secondServer
+
+	portssh=59184
+	serwer=login@secondServer.hostname.pl
+
+	createCopy "/home/login/domains/4thWordpressDirectoryName/public_html" "4thPageName"
+
+
+	# ThirdServer
+
+	portssh=22
+	serwer=login@ThirdServer.hostname.pl
+
+	createCopy "/home/login/ftp/5thPageName" "5thPageName"
+	createCopy "/home/login/ftp/6thPageName" "6thPageName"
+
+	# and so on...
+
+
+	# phase 2 - pulling Mysql Dumps from remote servers 
+
+
+	mkdir /storage/backupy/bazysql-firstServer-"$dzis"
+	scp -i ~/.ssh/yourRSApaswordlesskey -r yourLogin@firstServer.hostname.pl:dbcopies /storage/backupy/bazysql-firstServer-"$dzis"/
+
+	mkdir /storage/backupy/bazysql-secondServer-"$dzis"
+	scp -i ~/.ssh/yourRSApaswordlesskey -P 59184 -r propablyYourLogin@secondServer.hostname.pl:dbcopies /storage/backupy/bazysql-secondServer-"$dzis"/
+
+	# and so on...
+
+
+
+	dzis=$(date +"%Y-%m-%d")
+	teraz=$(date +"%Y-%m-%d-%R:%S")
+
+	echo "$teraz pushing files to Amazon S3" >> /home/root/scripts/backupLog
+	
+	# rclone settings for very cheap VPS with 768MB RAM so you need to tweak those
+	rclone copy /storage/backupy/kopieplikow-"$dzis" s3:yourS3BucketName/cron/"$dzis"/  --checkers 1 --transfers 1 --use-mmap --buffer-size=64M --tpslimit 3 --s3-chunk-size=64M -q
+
+	teraz=$(date +"%Y-%m-%d-%R:%S")
+	echo "$teraz pushing SQL databases to Amazon S3" >> /home/root/scripts/backupLog
+
+	rclone copy /storage/backupy/bazysql-firstServer-"$dzis"/kopiebaz                s3:yourS3BucketName/cron/"$dzis"/firstServer  --checkers 1 --transfers 1 --use-mmap --buffer-size=64M --tpslimit 3 --s3-chunk-size=64M -q
+	rclone copy /storage/backupy/bazysql-secondServer-"$dzis"/kopiebaz         s3:yourS3BucketName/cron/"$dzis"/secondServer  --checkers 1 --transfers 1 --use-mmap --buffer-size=64M --tpslimit 3  --s3-chunk-size=64M -q
+
+
+	# send mail with backupLog
+	cat /home/root/scripts/backupLog | pusher log_backupu_stron
