@@ -1,0 +1,48 @@
+#!/bin/bash
+# skrypt pyta o 3 parametry i wykonuje utworzenie strony www, włączenie na niej SSL, utworzenie bazy danych i konta pocztowego
+# skrypt jest zbudowany pod moje potrzeby ale jeśli jesteś klientem mydevil to ułatwi ci życie :) 
+# jeśli szukasz hostingu i jeszcze nic nie wybrałeś to polecam kilka na https://blog.elimu.pl/wspomoz-elimu/ - tam są różne używane przeze mnie usługi i narzędzia
+# jeśli zauważysz błąd w skrypcie albo masz pomysł na jego rozwój - daj znać!
+
+
+read -p 'podaj fqdn strony: ' FQDN
+read -p 'podaj nazwe usera i db (max 10 znaków): ' DBUSER
+read -p 'podaj przedrostek swojego konta np m1xxx dla serwera s3 albo m1xxx dla s35 ' ACCPREFIX
+
+PREFIX_USER="${ACCPREFIX}_${DBUSER}"
+
+echo fqdn to $FQDN
+echo accprefix to $ACCPREFIX
+echo dbuser to $DBUSER
+echo PREFIX_USER to $PREFIX_USER
+
+echo "zostanie założona baza i user o nazwie $PREFIX_USER"
+read -p 'enter aby kontynuowac do zakladania bazy i usera'
+
+echo Hasło do nowego usera musi zawierać: co najmniej 6 znaków, co najmniej jedną cyfrę, co najmniej jedną małą literę, co najmniej jedną dużą literę
+
+devil mysql db add $DBUSER
+devil mysql user add $DBUSER
+devil mysql privileges $PREFIX_USER $PREFIX_USER +ALL
+
+echo 'adres do phpmyadmin - https://pma.mydevil.net/'
+
+read -p 'enter aby kontynuowac do zakladania maila'
+
+devil mail account add www@$FQDN
+
+echo 'adres webowego klienta poczty - https://poczta.mydevil.net/'
+read -p 'enter aby kontynuowac'
+
+devil www add $FQDN
+devil www options $FQDN sslonly on
+
+rm latest.zip
+fetch https://wordpress.org/latest.zip
+ll ~/domains/$FQDN/public_html
+rm -R ~/domains/$FQDN/public_html && unzip -q latest.zip && mv wordpress ~/domains/$FQDN/public_html
+ll ~/domains/$FQDN/public_html
+
+echo "dodaj cert SSL w panelu mydevil i zacznij konfig Wordpress wchodząc na adres https://$FQDN"
+
+read -p 'enter aby zakonczyc'
