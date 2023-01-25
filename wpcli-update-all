@@ -4,9 +4,10 @@
 # also, i believe that it is easier to fix WordPress broken by update than a virused site
 # you need to change user and paths to your enviroment obviously
 # this is work in progress - i am learning bash :) 
-# script works in 3 steps:
-# this script runs every several hours on my hostings, including cheap VPS from mikr.us (afiiliate link) https://mikr.us/?r=e6a6d054
-# please comment or makepull req if you see a better way to do anything, i am not an expert in bash/linux etc. 
+# i use this on several hostings but some of them need to be prepared before using this - e.g. i need to install wp-cli or do some strange hacks in crontab to make it work
+# this one works best on mydevil hosting (aff link) http://www.mydevil.net/pp/JWW0U632U5
+# please comment or make pull req if you see a better way to do anything, i am not an expert in bash/linux etc. 
+# you can put this script in your crontab to perform automated updates every day, hour etc.
 
 #!/bin/bash
 
