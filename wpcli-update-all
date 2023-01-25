@@ -1,0 +1,43 @@
+#!/bin/bash
+# author: Krzysztof Palikowski, https://palikowski.net/blog
+# this script was created because i have too many WordPress sites to manage using MainWP or similar tools
+# also, i believe that it is easier to fix WordPress broken by update than a virused site
+# you need to change user and paths to your enviroment obviously
+# this is work in progress - i am learning bash :) 
+# script works in 3 steps:
+# this script runs every several hours on my hostings, including cheap VPS from mikr.us (afiiliate link) https://mikr.us/?r=e6a6d054
+# please comment or makepull req if you see a better way to do anything, i am not an expert in bash/linux etc. 
+
+#!/bin/bash
+
+logfile='../logupdate.txt' # location of log file, used in function below
+shopt -s expand_aliases # gives us a superpower - using aliases in unattended shell (e.g. crontab)
+alias wpcli='/home/myhostinglogin/wpcli/wp-cli.phar' # you need to update it to wp-cli.phar in your enviroment
+
+function updatesite () {
+
+        cd $1  # goes to directory specified as 1st parameter of function call (below SITES section)
+
+        nowIs=$(date +"%Y-%m-%d-%R:%S") # gets time i need put in logs
+        
+        echo "--- $nowIs --- starting update $2 " >>  $logfile # logs starting time to log file 
+
+        wpcli plugin update --all >> $logfile # updating plugins
+        wpcli core update >>  $logfile # updating core
+        wpcli core update-db >>  $logfile # updating database
+        wpcli theme update --all >>  $logfile # updating themes
+
+        wpcli language core update >>  $logfile # updating core translations
+        wpcli language plugin update --all >>  $logfile # updating plugins translations
+        wpcli language theme update --all >>  $logfile # updating themes translations
+
+        nowIs=$(date +"%Y-%m-%d-%R:%S")
+        echo "--- $nowIs --- ending update $2 " >>  $logfile # logs end time to log file 
+
+}
+
+# SITES to update - you can put 1, 5 or 100 sites, each in new line, using examples below
+
+updatesite "/home/myhostinglogin/domains/site1.pl/public_html/" "site1name"
+updatesite "/home/myhostinglogin/domains/site2.net/public_html/" "site2name"
+
